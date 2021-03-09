@@ -47,6 +47,7 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		}
 	}
 	
+	// Réalisation de l'arbre de décision
 	public void makeTree(Instances data) throws Exception {
 		if(data.numInstances() == 0) {
 			return ;
@@ -72,7 +73,7 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 			m_ClassValue = Utils.maxIndex(m_Distribution);
 			m_ClassAttribute = data.classAttribute();
 		}
-		else {
+		else { // On créé un noeud et lance la récursion pour réaliser la suite de l'arbre
 			Instances[] splitData = splitData(data, m_Attribute);
 			m_Successors = new DecisionTree[m_Attribute.numValues()];
 			for(int i = 0; i < m_Attribute.numValues(); ++i) {
