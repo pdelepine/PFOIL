@@ -252,7 +252,7 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	}
 	
 	public String toString() {
-		return " Decision Tree Classifier \n ================== \n " + toString(0);
+		return " Decision Tree Classifier \n ========================= \n " + toString(0);
 	}
 	
 	private String toString(int level) {
