@@ -19,19 +19,19 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	private static final long serialVersionUID = 1L;
 	
 	/** Booléen pour savoir s'il faut limité la taille de l'arbre**/
-	private boolean m_depthTree;
+	private boolean m_limiteDepth;
 	
 	/** Booléen pour savoir s'il faut respecter un taux d'impureté par feuille **/
-	private boolean m_impurityRate;
+	private boolean m_impurityAllowed;
 	
 	/** Taux d'impureté par feuille **/
-	private double _impurityRate;
+	private double m_impurityRate;
 	
-	/** Profondeur de l'arbre courant **/
-	private int _depthTree;
+	/** Profondeur du noeud courant **/
+	private int m_depthTree;
 	
 	/** Profondeur max de l'arbre **/
-	private int _maxDepthTree;
+	private int m_maxDepthTree;
 	
 	/** Valeur de la classe si le noeud est une feuille **/
 	private double m_ClassValue;
@@ -42,22 +42,29 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	/** La distribution de la classe si le noeud est une feuille **/
 	private double[] m_Distribution;
 	
+	/** La distribution sans normalisation de la classe si le noeud est une feuille **/
+	private double[] m_distri;
+	
 	/** L'attribut utilisé pour la séparation des données **/
 	private Attribute m_Attribute;
 	
 	/** Tableau des successeurs du noeud courant **/
 	private DecisionTree[] m_Successors;
 
-	public DecisionTree(int depth) {
-		_depthTree = depth;
+	public DecisionTree(int depth, int maxDepth, double impurityRate) {
+		m_depthTree = depth;
+		m_maxDepthTree = maxDepth;
+		m_impurityRate = impurityRate;
 	}
 	
 	public Capabilities getCapabilities() {
 		Capabilities result = super.getCapabilities();
 		
+		// attributes
 		result.enable(Capability.NOMINAL_ATTRIBUTES);
 		result.enable(Capability.MISSING_VALUES);
 		
+		// class
 		result.enable(Capability.NOMINAL_CLASS);
 		result.enable(Capability.MISSING_CLASS_VALUES);
 		
@@ -89,16 +96,16 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		// Options concernant la profondeur
 		String treeDepth = Utils.getOption('P', options);
 		if(treeDepth.length() != 0) {
-			_maxDepthTree = Integer.parseInt(treeDepth);
+			m_maxDepthTree = Integer.parseInt(treeDepth);
 		}else {
-			_maxDepthTree = -1;
+			m_maxDepthTree = -1;
 		}
 		
 		String impurityRate = Utils.getOption('I', options);
 		if(impurityRate.length() != 0) {
-			_impurityRate = Double.parseDouble(impurityRate);
+			m_impurityRate = Double.parseDouble(impurityRate);
 		}else {
-			_impurityRate = 0;
+			m_impurityRate = 0;
 		}
 		
 		super.setOptions(options);
@@ -114,12 +121,12 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	
 	public String[] getOptions() {
 		
-		Vector<String> options =new Vector<String>();
+		Vector<String> options = new Vector<String>();
 		
-		if(m_impurityRate) {
+		if(m_impurityAllowed) {
 			options.add("-I");
 		}
-		if(m_depthTree) {
+		if(m_limiteDepth) {
 			options.add("-P");
 		}
 		
@@ -129,9 +136,26 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	}
 	
 	public void buildClassifier(Instances instances) throws Exception {
+		
+		//System.out.println("enterBuild");
 		// Est-ce que le classifier peut prendre en charge les données ?
-		getCapabilities().testWithFail(instances);
-				
+		if (!instances.classAttribute().isNominal()) {
+			throw new Exception("Attribute nominal needed");
+		}
+		Enumeration<Attribute> enumAtt = instances.enumerateAttributes();
+		while (enumAtt.hasMoreElements()) {
+			Attribute attr = (Attribute) enumAtt.nextElement();
+			if (!attr.isNominal()) {
+				throw new Exception("Decision tree: only nominal attributes, please.");
+			}
+			Enumeration<Instance>  enumInst = instances.enumerateInstances();
+			while (enumInst.hasMoreElements()) {
+				if (((Instance) enumInst.nextElement()).isMissing(attr)) {
+					throw new Exception("Decision tree: no missing values, please.");
+				}
+			}
+		}
+		
 		// On supprime les instances qui n'ont pas de classe
 		instances = new Instances(instances);
 		instances.deleteWithMissingClass();
@@ -143,48 +167,79 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		}
 				
 		makeTree(instances);
+		//System.out.println("endMakeTree");
 	}
 	
-	// Réalisation de l'arbre de décision
+	/**
+	 * Réalisation de l'arbre de décision TDIDT
+	 * @param data
+	 * @throws Exception
+	 */
 	public void makeTree(Instances data) throws Exception {
+		
+		// Vérifie si aucune instances n'a atteint ce noeud
 		if(data.numInstances() == 0) {
 			m_Attribute = null;
+			m_ClassValue = Utils.missingValue();
 			m_Distribution = new double[data.numClasses()];
 			return ;
 		}
 		
+		// Calcule l'attribut avec le plus grand gain
 		double[] infoGains = new double[data.numAttributes()];
 		Enumeration<Attribute> attEnum = data.enumerateAttributes();
 		while(attEnum.hasMoreElements()) {
 			Attribute att = attEnum.nextElement();
 			infoGains[att.index()] = computeInfoGains(data, att);
 		}
+		
 		m_Attribute = data.attribute(Utils.maxIndex(infoGains));
 		
-		if(Utils.eq(infoGains[m_Attribute.index()], _impurityRate) || _depthTree == _maxDepthTree ) { // Alors c'est une feuille
+		// Calcule du pourcentage d'impureté sur le noeud
+		double[] distriTmp = new double[data.numClasses()];
+		Enumeration<Instance> instEnum_ = data.enumerateInstances();
+		while(instEnum_.hasMoreElements()) {
+			Instance inst = instEnum_.nextElement();
+			distriTmp[(int) inst.classValue()] += 1;
+		}
+		
+		// Faire une feuille si le gain est 0 ou si le taux d'impureté est respecté
+		// ou on a atteint la taille d'arbre maximum
+		// Sinon on crée des successeurs et lance la récursion pour réaliser la suite de l'arbre
+		if(Utils.eq(infoGains[m_Attribute.index()], 0)
+				|| (distriTmp[Utils.maxIndex(distriTmp)] * 100 / Utils.sum(distriTmp) >= (100 - m_impurityRate))
+				|| m_depthTree == m_maxDepthTree ) { 
 			m_Attribute = null;
 			m_Distribution = new double[data.numClasses()];
+			m_distri = new double[data.numClasses()];
 			Enumeration<Instance> instEnum = data.enumerateInstances();
 			while(instEnum.hasMoreElements()) {
 				Instance inst = instEnum.nextElement();
-				m_Distribution[(int) inst.classValue()]++;
+				m_Distribution[(int) inst.classValue()] += 1;
+				m_distri[(int) inst.classValue()] += 1;
 			}
 			Utils.normalize(m_Distribution);
 			m_ClassValue = Utils.maxIndex(m_Distribution);
 			m_ClassAttribute = data.classAttribute();
 		}
-		else { // On créé un noeud et lance la récursion pour réaliser la suite de l'arbre
+		else {
 			Instances[] splitData = splitData(data, m_Attribute);
 			m_Successors = new DecisionTree[m_Attribute.numValues()];
 			for(int i = 0; i < m_Attribute.numValues(); ++i) {
-				m_Successors[i] = new DecisionTree(_depthTree+1);
+				m_Successors[i] = new DecisionTree(m_depthTree+1, m_maxDepthTree, m_impurityRate);
 				m_Successors[i].buildClassifier(splitData[i]);
 			}
 		}
 	}
 	
-	// Calcul du gain
-	public double computeInfoGains(Instances data, Attribute att) {
+	/**
+	 *  Calcul le gain pour un attribut
+	 * @param data les données sur lequelles on calcule le gain
+	 * @param att L'attribut
+	 * @return le gain pour l'attribut donnée
+	 */
+	public double computeInfoGains(Instances data, Attribute att) throws Exception{
+		
 		double infoGain = computeEntropy(data);
 		Instances[] splitData = splitData(data, att);
 		for(int i = 0; i < att.numValues(); ++i) {
@@ -195,8 +250,13 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		return infoGain;
 	}
 	
-	// Calcul du gain d'entropie
+	/**
+	 * Calcule de l'entropie d'un jeu de données
+	 * @param data
+	 * @return le gain d'entropie
+	 */
 	public double computeEntropy(Instances data) { 
+		
 		double[] classCounts = new double[data.numClasses()];
 		Enumeration<Instance> instEnum = data.enumerateInstances();
 		while(instEnum.hasMoreElements()) {
@@ -209,12 +269,15 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 				entropy -= classCounts[i] * Utils.log2(classCounts[i]);
 			}
 		}
+		
 		entropy /= (double) data.numInstances();
 		return entropy + Utils.log2(data.numInstances());
 	}
 	
 	/**
 	 * Classifie une instance de test donnée à l'aide de l'arbre de décision.
+	 * @param instance le jeu de données
+	 * @return la valeur de la classe
 	 */
 
 	public double classifyInstance(Instance instance) throws Exception {
@@ -228,6 +291,8 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	
 	/**
 	 * Calcule la distribution de classe par exemple à l'aide de l'arbre de décision.
+	 * @param instance le jeu de données
+	 * @return la distribution des classes
 	 */
 
 	public double[] distributionForInstance(Instance instance) throws Exception {
@@ -238,7 +303,14 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		}
 	}
 	
+	/**
+	 * Divise un jeu de données selon les valeur d'un attribut nominal
+	 * @param data le jeu de données
+	 * @param att l'attribut nominal
+	 * @return le jeu de données divisé
+	 */
 	public Instances[] splitData(Instances data, Attribute att) {
+		
 		Instances[] splitData = new Instances[att.numValues()];
 		for(int i = 0; i < att.numValues(); ++i) {
 			splitData[i] = new Instances(data, data.numInstances());
@@ -251,15 +323,34 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		return splitData;
 	}
 	
+	/**
+	 * Imprime l'abre de décision selon la méthode toString privée ci-dessous
+	 * @return l'affichage de l'arbre de décision
+	 */
 	public String toString() {
-		return " Decision Tree Classifier \n ========================= \n " + toString(0);
+		return " Decision Tree TDIDT Classifier\n=========================\n" + toString(0);
 	}
-	
+	/**
+	 * Renvoie un arbre depuis un niveau donné
+	 * @param level
+	 * @return l'affichage de l'arbre à un niveau donné
+	 */
 	private String toString(int level) {
+		
 		StringBuffer text = new StringBuffer();
 		
 		if(m_Attribute == null) {
-			text.append(": "+m_ClassAttribute.value((int) m_ClassValue));
+			if(Utils.isMissingValue(m_ClassValue)) {
+				text.append(": null");
+			}
+			else {
+				String distri = " (";
+				for(int i = 0; i < m_distri.length; i++) {
+					distri += "" + m_distri[i] + ((i < m_distri.length - 1)?" / ":"");
+				}
+				distri += ")";
+				text.append(": " + m_ClassAttribute.value((int) m_ClassValue) + distri );
+			}
 		}else {
 			for(int i = 0; i < m_Attribute.numValues(); i++) {
 				text.append("\n");
@@ -275,7 +366,7 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 
 	public static void main(String[] args) {
 		try {
-			System.out.println(Evaluation.evaluateModel(new DecisionTree(0), args));
+			System.out.println(Evaluation.evaluateModel(new DecisionTree(0, 0, 0), args));
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
