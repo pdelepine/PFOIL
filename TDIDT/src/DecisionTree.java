@@ -42,9 +42,6 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	/** La distribution de la classe si le noeud est une feuille **/
 	private double[] m_Distribution;
 	
-	/** La distribution sans normalisation de la classe si le noeud est une feuille **/
-	private double[] m_distri;
-	
 	/** L'attribut utilisé pour la séparation des données **/
 	private Attribute m_Attribute;
 	
@@ -139,19 +136,20 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		
 		//System.out.println("enterBuild");
 		// Est-ce que le classifier peut prendre en charge les données ?
+		//getCapabilities().testWithFail(instances);
 		if (!instances.classAttribute().isNominal()) {
-			throw new Exception("Id3: nominal class, please.");
+			throw new Exception("Decision Tree TDIDT: nominal class, please.");
 		}
 		Enumeration<Attribute> enumAtt = instances.enumerateAttributes();
 		while (enumAtt.hasMoreElements()) {
 			Attribute attr = (Attribute) enumAtt.nextElement();
 			if (!attr.isNominal()) {
-				throw new Exception("Id3: only nominal attributes, please.");
+				throw new Exception("Decision Tree TDIDT: only nominal attributes, please.");
 			}
 			Enumeration<Instance>  enumInst = instances.enumerateInstances();
 			while (enumInst.hasMoreElements()) {
 				if (((Instance) enumInst.nextElement()).isMissing(attr)) {
-					throw new Exception("Id3: no missing values, please.");
+					throw new Exception("Decision Tree TDIDT: no missing values, please.");
 				}
 			}
 		}
@@ -208,21 +206,15 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		// Faire une feuille si le gain est 0 ou si le taux d'impureté est respecté
 		// ou on a atteint la taille d'arbre maximum
 		// Sinon on crée des successeurs et lance la récursion pour réaliser la suite de l'arbre
-		/*System.out.println("NumMax: "+distriTmp[Utils.maxIndex(distriTmp)]+ " Sum: "+ Utils.sum(distriTmp) + " Pourcentage: "+
-				(distriTmp[Utils.maxIndex(distriTmp)] * 100/ Utils.sum(distriTmp) + " %accepte: "+ (100 - m_impurityRate)));
-		System.out.println("Condition: "+(distriTmp[Utils.maxIndex(distriTmp)] * 100/ Utils.sum(distriTmp) >= (100 - m_impurityRate)));
-		System.out.println("-----");*/
 		if(Utils.eq(infoGains[m_Attribute.index()], 0)
 				|| (distriTmp[Utils.maxIndex(distriTmp)] * 100 / Utils.sum(distriTmp) >= (100 - m_impurityRate))
 				|| m_depthTree == m_maxDepthTree ) { 
 			m_Attribute = null;
 			m_Distribution = new double[data.numClasses()];
-			m_distri = new double[data.numClasses()];
 			Enumeration<Instance> instEnum = data.enumerateInstances();
 			while(instEnum.hasMoreElements()) {
 				Instance inst = instEnum.nextElement();
 				m_Distribution[(int) inst.classValue()] += 1;
-				m_distri[(int) inst.classValue()] += 1;
 			}
 			Utils.normalize(m_Distribution);
 			m_ClassValue = Utils.maxIndex(m_Distribution);
@@ -233,7 +225,9 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 			m_Successors = new DecisionTree[m_Attribute.numValues()];
 			for(int i = 0; i < m_Attribute.numValues(); ++i) {
 				m_Successors[i] = new DecisionTree(m_depthTree+1, m_maxDepthTree, m_impurityRate);
+				//System.out.println("Size splitData: "+ splitData[i].size());
 				m_Successors[i].buildClassifier(splitData[i]);
+				
 			}
 		}
 	}
@@ -288,6 +282,7 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		if(m_Attribute == null) {
 			return m_ClassValue;
 		}else {
+			System.out.println("class null");
 			return m_Successors[(int) instance.value(m_Attribute)].
 					classifyInstance(instance);
 		}
@@ -339,27 +334,44 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	private String toString(int level) {
 		
 		StringBuffer text = new StringBuffer();
-		
+		//System.out.println("test");
 		if(m_Attribute == null) {
-			if(Utils.isMissingValue(m_ClassValue)) {
+			//System.out.println("test value: "+ m_ClassValue);
+			if(Utils.isMissingValue(m_ClassValue) ) {
 				text.append(": null");
-			}
-			String distri = " (";
-			for(int i = 0; i < m_distri.length; i++) {
-				distri += "" + m_distri[i] + ((i < m_distri.length - 1)?" / ":"");
-			}
-			distri += ")";
-			text.append(": " + m_ClassAttribute.value((int) m_ClassValue) + distri );
+			}else {				
+				//System.out.print("ClassAttribut null: ");
+				//System.out.println(m_ClassAttribute == null);
+				if(m_ClassAttribute != null) {
+					text.append(": " + m_ClassAttribute.value((int) m_ClassValue) +  "=x" );
+				}else {
+					text.append("#");
+				}
+				
+			}			
 		}else {
+			//System.out.print("Size successors:");
+			/*if(m_Successors == null) {
+				System.out.println("succ null");
+			}
+			System.out.println((m_Successors == null )?"succ null":m_Successors.length);*/
 			for(int i = 0; i < m_Attribute.numValues(); i++) {
 				text.append("\n");
 				for(int j = 0; j < level; j++) {
 					text.append("|  ");
 				}
 				text.append(m_Attribute.name() + " = " + m_Attribute.value(i));
-				text.append(m_Successors[i].toString(level + 1));
+				
+				//System.out.print(i +" m_Successors: ");
+				//System.out.println(m_Successors[i] != null);
+				if(m_Successors[i] != null) {
+					text.append(m_Successors[i].toString(level + 1));
+					//System.out.println("test2");
+				}
+				
 			}
 		}
+		//System.out.println(text);
 		return text.toString();
 	}
 
