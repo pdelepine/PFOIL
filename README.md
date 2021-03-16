@@ -9,7 +9,7 @@ L'archive est constitué de:
 	- le dossier "src" avec le classificateur DecisionTree.java
 	- le .jar de weka 3-8-5
 - Un répertoire "Dataset-Valide" contenant des jeux de données sur lesquelles 
-le classificateur s'applique. Ces données viennnent de https://waikato.github.io/weka-wiki/datasets/
+le classificateur s'applique. Ces données viennent de https://waikato.github.io/weka-wiki/datasets/
 
 - Le fichier pdf expliquant les choix d'implémentation
 
