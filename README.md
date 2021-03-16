@@ -1,4 +1,4 @@
-# PFOIL
+# TDIDT
 TDIDT projet : Construction d'un arbre de décision
 				
 Le but de ce projet est de réaliser un programme permettant la construction d'un arbre de décision TDIDT
