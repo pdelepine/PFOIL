@@ -19,6 +19,7 @@ Pour exécuter le programme, la ligne de commande sur Linux est :
 java -jar DecisionTree.jar 
 
 Les options éventuelles sont : 
+
 -t <nom du fichier d'entrainement> : 
 	Définit le fichier d'entrainement. (Venant de weka)
 	
