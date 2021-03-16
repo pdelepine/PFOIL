@@ -18,12 +18,12 @@ le classificateur s'applique. Ces données viennent de https://waikato.github.io
 Pour exécuter le programme, la ligne de commande sur Linux est :
 java -jar DecisionTree.jar 
 
-Les options éventuelles sont : 
+Les options sont : 
 
 -t <nom du fichier d'entrainement> : 
 	Définit le fichier d'entrainement. (Venant de weka)
 	
--T <nom du fichier de test> : 
+-T <nom du fichier de test > : 
 	Définit le fichier de test. S'il est absent, une validation croisée sera effectuée sur les données d'entrainement. (Venant de weka)
 
 Le fichier doit être un fichier d'extension ".arff" et les données du fichier doivent être nominales.
