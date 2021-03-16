@@ -23,7 +23,7 @@ Les options sont :
 -t <nom du fichier d'entrainement> : 
 	Définit le fichier d'entrainement. (Venant de weka)
 
--T <nom du fichier de test > : 
+-T : <nom du fichier de test > : 
 	Définit le fichier de test. S'il est absent, une validation croisée sera effectuée sur les données d'entrainement. (Venant de weka)
 	
 
