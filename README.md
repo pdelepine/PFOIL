@@ -22,12 +22,13 @@ Les options sont :
 
 -t <nom du fichier d'entrainement> : 
 	Définit le fichier d'entrainement. (Venant de weka)
-	
+
 -T <nom du fichier de test > : 
 	Définit le fichier de test. S'il est absent, une validation croisée sera effectuée sur les données d'entrainement. (Venant de weka)
+	
 
-Le fichier doit être un fichier d'extension ".arff" et les données du fichier doivent être nominales.
-				
+Les fichiers doit être de type ".arff" et les données des fichiers doivent être nominales et il ne doit pas avoir de données manquantes.
+
 Il existe d'autres options non obligatoire spécifique à notre programme que l'on peut rajouter lors de l'exécution :
 					
 -P <profondeur maximale> : 
