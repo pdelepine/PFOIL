@@ -32,6 +32,7 @@ Il existe d'autres options non obligatoire spécifique à notre programme que l'
 	Définit une profondeur maximale à l'arbre de décision construit
 	Valeur par défault: -1 équivalent à aucune 
 	Valeurs acceptées: de 1 à infini
+	
 -I <pourcentage d'impureté> : 
 	Définit un taux d'impureté par feuille.
 	Valeur par défault: 0
