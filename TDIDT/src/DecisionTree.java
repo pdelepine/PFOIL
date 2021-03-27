@@ -59,11 +59,9 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 		
 		// attributes
 		result.enable(Capability.NOMINAL_ATTRIBUTES);
-		result.enable(Capability.MISSING_VALUES);
 		
 		// class
 		result.enable(Capability.NOMINAL_CLASS);
-		result.enable(Capability.MISSING_CLASS_VALUES);
 		
 		return result;
 	}
@@ -134,9 +132,7 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	
 	public void buildClassifier(Instances instances) throws Exception {
 		
-		//System.out.println("enterBuild");
 		// Est-ce que le classifier peut prendre en charge les données ?
-		//getCapabilities().testWithFail(instances);
 		if (!instances.classAttribute().isNominal()) {
 			throw new Exception("Decision Tree TDIDT: nominal class, please.");
 		}
@@ -153,8 +149,6 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 				}
 			}
 		}
-
-		//System.out.println("endTest");
 		
 		// On supprime les instances qui n'ont pas de classe
 		instances = new Instances(instances);
