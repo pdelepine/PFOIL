@@ -318,7 +318,8 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	 * Imprime l'abre de décision selon la méthode toString privée ci-dessous
 	 */
 	public String toString() {
-		return " Decision Tree TDIDT Classifier\n=========================\n" + toString(0);
+		return " Decision Tree TDIDT Classifier\n=========================\n" + toString(0) +
+				"\n\n Number of leaves :"+computedNbLeaves() + "\n\n Size of the Tree : "+computedNbNodes();
 	}
 	/**
 	 * Renvoie un arbre depuis un niveau donné
@@ -328,27 +329,15 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 	private String toString(int level) {
 		
 		StringBuffer text = new StringBuffer();
-		//System.out.println("test");
 		if(m_Attribute == null) {
-			//System.out.println("test value: "+ m_ClassValue);
 			if(Utils.isMissingValue(m_ClassValue) ) {
 				text.append(": null");
 			}else {				
-				//System.out.print("ClassAttribut null: ");
-				//System.out.println(m_ClassAttribute == null);
 				if(m_ClassAttribute != null) {
-					text.append(": " + m_ClassAttribute.value((int) m_ClassValue) +  "=x" );
-				}else {
-					text.append("#");
-				}
-				
+					text.append(": " + m_ClassAttribute.value((int) m_ClassValue) );
+				}				
 			}			
 		}else {
-			//System.out.print("Size successors:");
-			/*if(m_Successors == null) {
-				System.out.println("succ null");
-			}
-			System.out.println((m_Successors == null )?"succ null":m_Successors.length);*/
 			for(int i = 0; i < m_Attribute.numValues(); i++) {
 				text.append("\n");
 				for(int j = 0; j < level; j++) {
@@ -356,17 +345,45 @@ public class DecisionTree extends AbstractClassifier implements OptionHandler {
 				}
 				text.append(m_Attribute.name() + " = " + m_Attribute.value(i));
 				
-				//System.out.print(i +" m_Successors: ");
-				//System.out.println(m_Successors[i] != null);
 				if(m_Successors[i] != null) {
 					text.append(m_Successors[i].toString(level + 1));
-					//System.out.println("test2");
 				}
 				
 			}
 		}
-		//System.out.println(text);
 		return text.toString();
+	}
+	
+	/**
+	 * Renvoi le nombre de feuille du sous-arbre courant
+	 * @return
+	 */
+	private int computedNbLeaves() {
+		if(m_Attribute == null) {
+			return 1;
+		}else {
+			int sum = 0;
+			for(int i = 0 ; i< m_Successors.length; i++) {
+				sum += m_Successors[i].computedNbLeaves();
+			}
+			return sum;
+		}
+	}
+	
+	/**
+	 * Renvoie le nombre de nœud du sous-arbre courant
+	 * @return
+	 */
+	private int computedNbNodes() {
+		if(m_Attribute == null) {
+			return 1;
+		}else {
+			int sum = 1;
+			for(int i = 0 ; i< m_Successors.length; i++) {
+				sum += m_Successors[i].computedNbNodes();
+			}
+			return sum;
+		}
 	}
 
 	public static void main(String[] args) {
